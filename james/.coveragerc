@@ -1,0 +1,3 @@
+[run]
+source = james
+omit = james/test*
