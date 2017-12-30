@@ -1,4 +1,5 @@
 from datetime import datetime
+import math
 import unittest
 import transaction
 
@@ -44,21 +45,33 @@ class TestLoan(BaseTest):
 
         self.assertIsNotNone(loan.loan_id)
     
+    def test_create_success_calculate_installment(self):
+        loan = Loan(amount=1000.0, term=12, rate=0.05, date=datetime.now())
+        loan.set_installment_value()
+        self.session.add(loan)
+        self.session.flush()
+
+        self.assertIsNotNone(loan.loan_id)
+        self.assertEquals(math.floor(loan.installment * 100) / 100, 85.6)
+    
     def test_missing_fields(self):
         with self.assertRaises(IntegrityError):
-            loan = Loan(term=12, rate=0.87, date=datetime.now(), installment=78.90)
+            loan = Loan(term=12, rate=0.87, date=datetime.now(),
+                        installment=78.90)
             self.session.add(loan)
             self.session.flush()
         self.session.rollback()
         
         with self.assertRaises(IntegrityError):
-            loan = Loan(amount=100.10, rate=0.87, date=datetime.now(), installment=78.90)
+            loan = Loan(amount=100.10, rate=0.87, date=datetime.now(),
+                        installment=78.90)
             self.session.add(loan)
             self.session.flush()
         self.session.rollback()
         
         with self.assertRaises(IntegrityError):
-            loan = Loan(amount=204.50, term=14, date=datetime.now(), installment=78.90)
+            loan = Loan(amount=204.50, term=14, date=datetime.now(),
+                        installment=78.90)
             self.session.add(loan)
             self.session.flush()
         self.session.rollback()

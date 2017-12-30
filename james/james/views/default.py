@@ -1,33 +1,42 @@
+import ast
+
+import colander
 from pyramid.response import Response
 from pyramid.view import view_config
 
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import IntegrityError
 
-from ..models import MyModel
+from james.models import Loan
+from james.views.validators import NumberGreaterThanZero
 
 
-@view_config(route_name='home', renderer='../templates/mytemplate.jinja2')
-def my_view(request):
+class CreateLoanSchema(colander.MappingSchema):
+    amount = colander.SchemaNode(colander.Float(),
+        validator=NumberGreaterThanZero(), type='float')
+    term = colander.SchemaNode(colander.Integer(),
+        validator=NumberGreaterThanZero(), type='int')
+    rate = colander.SchemaNode(colander.Float(),
+        validator=NumberGreaterThanZero(), type='float')
+    date = colander.SchemaNode(colander.DateTime(), type='datetime')
+
+
+@view_config(route_name='add_loan', request_method='POST', renderer='json',
+             permission='edit')
+def add_loan(request):
     try:
-        query = request.dbsession.query(MyModel)
-        one = query.filter(MyModel.name == 'one').first()
-    except DBAPIError:
-        return Response(db_err_msg, content_type='text/plain', status=500)
-    return {'one': one, 'project': 'James Challenge'}
-
-
-db_err_msg = """\
-Pyramid is having a problem using your SQL database.  The problem
-might be caused by one of the following things:
-
-1.  You may need to run the "initialize_james_db" script
-    to initialize your database tables.  Check your virtual
-    environment's "bin" directory for this script and try to run it.
-
-2.  Your database server may not be running.  Check that the
-    database server referred to by the "sqlalchemy.url" setting in
-    your "development.ini" file is running.
-
-After you fix the problem, please restart the Pyramid application to
-try it again.
-"""
+        items = CreateLoanSchema().deserialize(request.json_body)
+    except ValueError:
+        request.response.status = 400
+        return {'error': 'Invalid JSON.'}
+    except colander.Invalid as e:
+        request.response.status = 400
+        return ast.literal_eval(e.__str__())
+    
+    loan = Loan(amount=items['amount'], term=items['term'], rate=items['rate'],
+                date=items['date'])
+    loan.set_installment_value()
+    
+    request.dbsession.add(loan)
+    request.dbsession.flush()
+    
+    return {'loan_id': loan.loan_id, 'installment': loan.installment}

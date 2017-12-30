@@ -23,3 +23,8 @@ class Loan(Base):
     rate = Column(Numeric(19, 10, asdecimal=False), nullable=False)
     date = Column(DateTime, nullable=False, index=True)
     installment = Column(Numeric(19, 10, asdecimal=False), nullable=False)
+    
+    def set_installment_value(self):
+        self.installment = ((self.rate / self.term) + (self.rate / self.term) / \
+                            ((1 + (self.rate / self.term)) ** self.term - 1)) \
+                            * self.amount
