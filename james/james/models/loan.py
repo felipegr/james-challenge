@@ -1,4 +1,5 @@
 from datetime import datetime
+import math
 import uuid
 
 from sqlalchemy import (
@@ -25,6 +26,7 @@ class Loan(Base):
     installment = Column(Numeric(19, 10, asdecimal=False), nullable=False)
     
     def set_installment_value(self):
-        self.installment = ((self.rate / self.term) + (self.rate / self.term) / \
-                            ((1 + (self.rate / self.term)) ** self.term - 1)) \
-                            * self.amount
+        installment = ((self.rate / self.term) + (self.rate / self.term) / \
+                       ((1 + (self.rate / self.term)) ** self.term - 1)) \
+                      * self.amount
+        self.installment = math.floor(installment * 100) / 100

@@ -5,9 +5,11 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
-    String
+    String,
+    UniqueConstraint
 )
 from sqlalchemy.orm import backref, relationship
 

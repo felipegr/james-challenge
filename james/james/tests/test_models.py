@@ -1,5 +1,4 @@
 from datetime import datetime
-import math
 import unittest
 import transaction
 
@@ -52,7 +51,7 @@ class TestLoan(BaseTest):
         self.session.flush()
 
         self.assertIsNotNone(loan.loan_id)
-        self.assertEquals(math.floor(loan.installment * 100) / 100, 85.6)
+        self.assertEquals(loan.installment, 85.6)
     
     def test_missing_fields(self):
         with self.assertRaises(IntegrityError):
