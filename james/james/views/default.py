@@ -85,7 +85,9 @@ def add_payment(request):
         return {'error': 'Invalid amount, must be ${}.'.format(loan.installment)}
     
     if request.dbsession.query(Payment).filter(
-        Payment.loan == loan, func.date(Payment.date) == items['date'].date()
+        Payment.loan == loan,
+        func.extract('year', Payment.date) == items['date'].year,
+        func.extract('month', Payment.date) == items['date'].month
         ).first():
         request.response.status = 409
         return {'error': 'Duplicated payment.'}

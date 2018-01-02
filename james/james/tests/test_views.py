@@ -156,6 +156,19 @@ class TestAddPayment(BaseTest):
         self.assertEquals(payment_2.payment, 'missed')
         self.assertEquals(payment_2.date, datetime(2017, 9, 5, 2, 18))
         self.assertEquals(payment_2.amount, 85.6)
+        
+        data = {'payment': 'made', 'date': '2018-08-05 02:18Z', 'amount': 85.6}
+        
+        res = self.testapp.post('/loans/{}/payments'.format(self.loan.loan_id),
+                                json.dumps(data), headers=self.headers)
+        
+        payment_3 = self.session.query(Payment).filter(
+            Payment.id != payment_1.id, Payment.id != payment_2.id).one()
+        
+        self.assertEquals(payment_3.loan_id, self.loan.id)
+        self.assertEquals(payment_3.payment, 'made')
+        self.assertEquals(payment_3.date, datetime(2018, 8, 5, 2, 18))
+        self.assertEquals(payment_3.amount, 85.6)
     
     def test_loan_not_found(self):
         data = {'payment': 'made', 'date': '2017-08-05 02:18Z', 'amount': 85.6}
@@ -227,7 +240,7 @@ class TestAddPayment(BaseTest):
         
         self.assertEquals(res.json_body['error'], 'Duplicated payment.')
         
-        data = {'payment': 'missed', 'date': '2017-08-05 04:00Z', 'amount': 85.6}
+        data = {'payment': 'missed', 'date': '2017-08-13 04:00Z', 'amount': 85.6}
         
         res = self.testapp.post('/loans/{}/payments'.format(self.loan.loan_id),
                                 json.dumps(data), headers=self.headers,
