@@ -8,6 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 from james.models import Loan, Payment
+from james.models.loan import InvalidDate
 from james.views.validators import NumberGreaterThanZero
 
 
@@ -27,6 +28,10 @@ class CreatePaymentSchema(colander.MappingSchema):
     date = colander.SchemaNode(colander.DateTime(), type='datetime')
     amount = colander.SchemaNode(colander.Float(),
         validator=NumberGreaterThanZero(), type='float')
+
+
+class BalanceSchema(colander.MappingSchema):
+    date = colander.SchemaNode(colander.DateTime(), type='datetime')
 
 
 @view_config(route_name='add_loan', request_method='POST', renderer='json',
@@ -73,7 +78,7 @@ def add_payment(request):
     if items['date'].date() < loan.date.date():
         request.response.status = 400
         return {'error': 'Invalid payment date, must be later than or equal to' +
-            ' loan date.'}
+            ' {}.'.format(loan.date.date())}
     
     if items['amount'] != loan.installment:
         request.response.status = 400
@@ -92,3 +97,30 @@ def add_payment(request):
     request.dbsession.flush()
     
     return {'success': 'Payment added.'}
+
+
+@view_config(route_name='balance', request_method='POST', renderer='json',
+             permission='edit')
+def balance(request):
+    loan_id = request.matchdict['loan_id']
+    
+    loan = request.dbsession.query(Loan).filter_by(loan_id=loan_id).first()
+    
+    if not loan:
+        raise HTTPNotFound('Loan not found')
+    
+    try:
+        items = BalanceSchema().deserialize(request.json_body)
+    except ValueError:
+        request.response.status = 400
+        return {'error': 'Invalid JSON.'}
+    except colander.Invalid as e:
+        request.response.status = 400
+        return ast.literal_eval(e.__str__())
+
+    try:
+        return {'balance': loan.calculate_balance(items['date'].date())}
+    except InvalidDate:
+        request.response.status = 400
+        return {'error': 'Invalid date, must be later than or equal to {}.'. \
+            format(loan.date.date())}

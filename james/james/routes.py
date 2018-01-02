@@ -6,6 +6,8 @@ def includeme(config):
     config.add_route('add_loan', '/loans', factory=LoanResource)
     config.add_route('add_payment', '/loans/{loan_id}/payments',
                      factory=LoanResource)
+    config.add_route('balance', '/loans/{loan_id}/balance',
+                     factory=LoanResource)
 
 
 class LoanResource(object):

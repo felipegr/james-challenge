@@ -6,6 +6,7 @@ from pyramid import testing
 from sqlalchemy.exc import IntegrityError
 
 from james.models import Loan, Payment
+from james.models.loan import InvalidDate
 
 
 class BaseTest(unittest.TestCase):
@@ -86,6 +87,44 @@ class TestLoan(BaseTest):
             self.session.add(loan)
             self.session.flush()
         self.session.rollback()
+    
+    def test_balance(self):
+        loan = Loan(amount=100.10, term=12, rate=0.87, date=datetime(2017, 1, 1),
+                    installment=78.90)
+        self.session.add(loan)
+        self.session.flush()
+        
+        self.assertEquals(loan.calculate_balance(datetime.now().date()),
+                          round(12 * 78.9, 2))
+    
+        payment = Payment(loan=loan, payment='made', date=datetime(2017, 1, 1),
+                          amount=78.90)
+        self.session.add(payment)
+        self.session.flush()
+        
+        self.assertEquals(loan.calculate_balance(datetime(2017, 1, 1).date()),
+                          round(11 * 78.9, 2))
+        
+        payment = Payment(loan=loan, payment='made', date=datetime(2017, 2, 1),
+                          amount=78.90)
+        self.session.add(payment)
+        self.session.flush()
+        
+        self.assertEquals(loan.calculate_balance(datetime(2017, 1, 1).date()),
+                          round(11 * 78.9, 2))
+        self.assertEquals(loan.calculate_balance(datetime(2017, 2, 1).date()),
+                          round(10 * 78.9, 2))
+        
+        payment = Payment(loan=loan, payment='missed', date=datetime(2017, 3, 1),
+                          amount=78.90)
+        self.session.add(payment)
+        self.session.flush()
+        
+        self.assertEquals(loan.calculate_balance(datetime(2017, 3, 1).date()),
+                          round(10 * 78.9, 2))
+        
+        with self.assertRaises(InvalidDate):
+            loan.calculate_balance(datetime(1979, 9, 4).date())
 
 
 class TestPayment(BaseTest):

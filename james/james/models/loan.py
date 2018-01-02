@@ -5,12 +5,18 @@ import uuid
 from sqlalchemy import (
     Column,
     DateTime,
+    func,
     Integer,
     Numeric,
     String
 )
 
 from .meta import Base
+from .payment import Payment
+
+
+class InvalidDate(Exception):
+    pass
 
 
 class Loan(Base):
@@ -30,3 +36,19 @@ class Loan(Base):
                        ((1 + (self.rate / self.term)) ** self.term - 1)) \
                       * self.amount
         self.installment = math.floor(installment * 100) / 100
+
+    def calculate_balance(self, date):
+        if date < self.date.date():
+            raise InvalidDate
+        
+        total = self.installment * self.term
+        
+        if not self.payments.first():
+            return round(total, 2)
+        
+        query = self.payments
+        query = query.filter(func.date(Payment.date) <= date,
+                             Payment.payment == 'made')
+        paid_installments = query.count() * self.installment
+
+        return round(total - paid_installments, 2)
